@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>WebSocket Test - Security Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/sockjs-client@1/dist/sockjs.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/stompjs@2.3.3/lib/stomp.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .section { margin-bottom: 30px; padding: 20px; border: 1px solid #ddd; border-radius: 5px; }
+        .alert { padding: 10px; margin: 5px 0; border-radius: 3px; }
+        .alert-critical { background-color: #f8d7da; border-color: #f5c6cb; color: #721c24; }
+        .alert-high { background-color: #fff3cd; border-color: #ffeaa7; color: #856404; }
+        .alert-medium { background-color: #d4edda; border-color: #c3e6cb; color: #155724; }
+        .status { padding: 10px; margin: 10px 0; }
+        .status.connected { background-color: #d4edda; color: #155724; }
+        .status.disconnected { background-color: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h1>🛡️ Security Dashboard WebSocket Test</h1>
+
+    <div class="section">
+        <h2>Connection Status</h2>
+        <div id="connectionStatus" class="status disconnected">Disconnected</div>
+        <button onclick="connect()">Connect</button>
+        <button onclick="disconnect()">Disconnect</button>
+    </div>
+
+    <div class="section">
+        <h2>Real-time Security Alerts</h2>
+        <div id="alerts"></div>
+    </div>
+
+    <div class="section">
+        <h2>Security Metrics</h2>
+        <div id="metrics"></div>
+    </div>
+
+    <div class="section">
+        <h2>System Status</h2>
+        <div id="systemStatus"></div>
+    </div>
+
+    <div class="section">
+        <h2>Test Actions</h2>
+        <button onclick="generateTestAttack()">Generate Test Attack</button>
+        <button onclick="requestMetricsUpdate()">Request Metrics Update</button>
+    </div>
+</div>
+
+<script>
+    let stompClient = null;
+    let isConnected = false;
+
+    function connect() {
+        const socket = new SockJS('/ws');
+        stompClient = Stomp.over(socket);
+
+        stompClient.connect({}, function (frame) {
+            console.log('Connected: ' + frame);
+            isConnected = true;
+            document.getElementById('connectionStatus').innerHTML = 'Connected';
+            document.getElementById('connectionStatus').className = 'status connected';
+
+            // Subscribe to security alerts
+            stompClient.subscribe('/topic/security-alerts', function (alert) {
+                showAlert(JSON.parse(alert.body));
+            });
+
+            // Subscribe to metrics updates
+            stompClient.subscribe('/topic/metrics-periodic', function (metrics) {
+                showMetrics(JSON.parse(metrics.body));
+            });
+
+            // Subscribe to system status
+            stompClient.subscribe('/topic/system-status', function (status) {
+                showSystemStatus(JSON.parse(status.body));
+            });
+
+        }, function(error) {
+            console.log('Connection error: ' + error);
+            document.getElementById('connectionStatus').innerHTML = 'Connection Error: ' + error;
+            document.getElementById('connectionStatus').className = 'status disconnected';
+        });
+    }
+
+    function disconnect() {
+        if (stompClient !== null) {
+            stompClient.disconnect();
+        }
+        isConnected = false;
+        document.getElementById('connectionStatus').innerHTML = 'Disconnected';
+        document.getElementById('connectionStatus').className = 'status disconnected';
+        console.log('Disconnected');
+    }
+
+    function showAlert(alert) {
+        const alertsDiv = document.getElementById('alerts');
+        const alertElement = document.createElement('div');
+        alertElement.className = `alert alert-${alert.severity.toLowerCase()}`;
+        alertElement.innerHTML = `
+                <strong>${alert.attackType}</strong> from ${alert.sourceIp}<br>
+                <small>${alert.description}</small><br>
+                <small>Time: ${new Date(alert.timestamp).toLocaleString()}</small>
+            `;
+
+        alertsDiv.insertBefore(alertElement, alertsDiv.firstChild);
+
+        // Keep only last 10 alerts
+        while (alertsDiv.children.length > 10) {
+            alertsDiv.removeChild(alertsDiv.lastChild);
+        }
+    }
+
+    function showMetrics(metrics) {
+        const metricsDiv = document.getElementById('metrics');
+        metricsDiv.innerHTML = `
+                <p><strong>Total Attacks (24h):</strong> ${metrics.totalAttacks}</p>
+                <p><strong>Blocked Attacks:</strong> ${metrics.blockedAttacks}</p>
+                <p><strong>Last Updated:</strong> ${new Date().toLocaleString()}</p>
+            `;
+    }
+
+    function showSystemStatus(status) {
+        const statusDiv = document.getElementById('systemStatus');
+        statusDiv.innerHTML = `
+                <p><strong>Status:</strong> ${status.status}</p>
+                <p><strong>Active Detectors:</strong> ${status.activeDetectors}</p>
+                <p><strong>Last Update:</strong> ${new Date(status.timestamp).toLocaleString()}</p>
+            `;
+    }
+
+    function generateTestAttack() {
+        // Trigger a test attack
+        fetch('/test/vulnerable?input=\' OR 1=1--')
+            .then(() => console.log('Test attack triggered'));
+    }
+
+    function requestMetricsUpdate() {
+        if (stompClient && isConnected) {
+            stompClient.send('/app/metrics/request', {}, {});
+        }
+    }
+
+    // Auto-connect on page load
+    window.onload = function() {
+        connect();
+    };
+</script>
+</body>
+</html>
