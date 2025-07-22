@@ -21,10 +21,9 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/api/public/**", "/test/**", "/ws/**","/home","/swagger-ui","api/security/**","api/attack/**").permitAll()
+                        .requestMatchers("/api/public/**", "/test/**", "/ws/**","/home","/swagger-ui","api/security/**","api/attack/**","/api/admin/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         .anyRequest().authenticated()
                 )
                 .headers(headers -> headers

@@ -14,6 +14,7 @@ public class DetectionConfig {
     private boolean enableSlackAlerts = false;
     private String alertEmail = "";
     private long cleanupInterval = 300000;
+    private boolean enableRealBlocking = false;
 
     // Getters and setters
     public int getDdosThreshold() {
@@ -70,6 +71,14 @@ public class DetectionConfig {
 
     public void setCleanupInterval(long cleanupInterval) {
         this.cleanupInterval = cleanupInterval;
+    }
+
+    public boolean isEnableRealBlocking() {
+        return enableRealBlocking;
+    }
+
+    public void setEnableRealBlocking(boolean enableRealBlocking) {
+        this.enableRealBlocking = enableRealBlocking;
     }
 }
 

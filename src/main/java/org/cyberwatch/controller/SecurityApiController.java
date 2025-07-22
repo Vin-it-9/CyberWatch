@@ -79,7 +79,7 @@ public class SecurityApiController {
         return ResponseEntity.ok(trends);
     }
 
-    @GetMapping("/dashboard")
+    @PostMapping("/dashboard")
     public ResponseEntity<Map<String, Object>> getDashboardData() {
         Map<String, Object> dashboard = new HashMap<>();
 

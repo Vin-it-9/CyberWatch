@@ -22,11 +22,9 @@ public class SecurityMetricsRecorder {
     private final Counter errorCounter;
     private final Counter totalRequestsCounter;
 
-    // Event streaming for real-time updates
     private final CopyOnWriteArrayList<String> recentEvents = new CopyOnWriteArrayList<>();
     private final ScheduledExecutorService scheduler = Executors.newScheduledThreadPool(2);
 
-    // Statistics
     private final AtomicLong totalKnownAttacks = new AtomicLong(0);
     private final AtomicLong totalSuspicious = new AtomicLong(0);
     private final AtomicLong totalClean = new AtomicLong(0);
@@ -55,7 +53,6 @@ public class SecurityMetricsRecorder {
                 .description("Total number of security requests processed")
                 .register(registry);
 
-        // Start cleanup scheduler
         startEventCleanup();
     }
 
@@ -68,7 +65,7 @@ public class SecurityMetricsRecorder {
                 getCurrentTimestamp(), totalKnownAttacks.get());
         addEvent(event);
 
-        System.out.println("📊 METRICS: Known attack detected. Total known attacks: " + totalKnownAttacks.get());
+        System.out.println("METRICS: Known attack detected. Total known attacks: " + totalKnownAttacks.get());
     }
 
     public void incrementUnknown() {
@@ -90,7 +87,7 @@ public class SecurityMetricsRecorder {
                 getCurrentTimestamp(), totalSuspicious.get());
         addEvent(event);
 
-        System.out.println("📊 METRICS: Suspicious activity detected. Total suspicious: " + totalSuspicious.get());
+        System.out.println("METRICS: Suspicious activity detected. Total suspicious: " + totalSuspicious.get());
     }
 
     public void incrementClean() {
@@ -115,7 +112,6 @@ public class SecurityMetricsRecorder {
         System.out.println("📊 METRICS: Detection error occurred. Total errors: " + totalErrors.get());
     }
 
-    // Event streaming methods
     public java.util.List<String> getRecentEvents() {
         return new java.util.ArrayList<>(recentEvents);
     }
@@ -147,7 +143,7 @@ public class SecurityMetricsRecorder {
 
     public String getSecuritySummary() {
         return String.format(
-                "🛡️ SECURITY SUMMARY:\n" +
+                "  SECURITY SUMMARY:\n" +
                         "├── Known Attacks: %d\n" +
                         "├── Suspicious Activities: %d\n" +
                         "├── Clean Requests: %d\n" +
@@ -164,7 +160,6 @@ public class SecurityMetricsRecorder {
     // Private helper methods
     private void addEvent(String event) {
         recentEvents.add(event);
-        // Keep only last 100 events to prevent memory issues
         if (recentEvents.size() > 100) {
             recentEvents.remove(0);
         }
@@ -175,7 +170,6 @@ public class SecurityMetricsRecorder {
     }
 
     private void startEventCleanup() {
-        // Clean old events every 5 minutes
         scheduler.scheduleAtFixedRate(() -> {
             if (recentEvents.size() > 50) {
                 while (recentEvents.size() > 50) {
@@ -185,7 +179,6 @@ public class SecurityMetricsRecorder {
         }, 5, 5, TimeUnit.MINUTES);
     }
 
-    // For compatibility with event streaming (simplified version)
     public java.util.stream.Stream<String> eventStream() {
         return recentEvents.stream();
     }

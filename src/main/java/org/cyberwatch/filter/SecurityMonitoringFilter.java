@@ -1,6 +1,8 @@
 package org.cyberwatch.filter;
 
+import org.cyberwatch.config.DetectionConfig;
 import org.cyberwatch.detector.AttackDetector;
+import org.cyberwatch.service.IPBlockingService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -18,10 +20,17 @@ public class SecurityMonitoringFilter implements Filter {
     @Autowired
     private List<AttackDetector> attackDetectors;
 
+    @Autowired
+    private IPBlockingService ipBlockingService;
+
+    @Autowired
+    private DetectionConfig detectionConfig;
+
     @Override
     public void init(FilterConfig filterConfig) throws ServletException {
-        System.out.println("Security Monitoring Filter initialized with " +
+        System.out.println("🛡️ Security Monitoring Filter initialized with " +
                 attackDetectors.size() + " detectors");
+        System.out.println("🔧 Real blocking mode: " + (detectionConfig.isEnableRealBlocking() ? "ENABLED" : "DISABLED"));
     }
 
     @Override
@@ -32,6 +41,7 @@ public class SecurityMonitoringFilter implements Filter {
         HttpServletResponse httpResponse = (HttpServletResponse) response;
 
         String clientIP = getClientIP(httpRequest);
+        String userAgent = httpRequest.getHeader("User-Agent");
         String requestURI = httpRequest.getRequestURI();
 
         if (shouldSkipMonitoring(requestURI)) {
@@ -39,7 +49,26 @@ public class SecurityMonitoringFilter implements Filter {
             return;
         }
 
+        boolean blockingEnabled = detectionConfig.isEnableRealBlocking();
+        String mode = blockingEnabled ? "PRODUCTION" : "TESTING";
+
+        if (blockingEnabled && ipBlockingService.isIPBlocked(clientIP)) {
+            blockRequest(httpResponse, clientIP, "IP is currently blocked due to previous attacks");
+            return;
+        } else if (!blockingEnabled && ipBlockingService.isBlocked(clientIP)) {
+            System.out.println("🧪 " + mode + " MODE: IP " + clientIP + " would be blocked but continuing for testing");
+        }
+
+        if (blockingEnabled && ipBlockingService.isAgentBlocked(clientIP, userAgent)) {
+            blockRequest(httpResponse, clientIP, "IP + User-Agent combination is blocked");
+            return;
+        } else if (!blockingEnabled && ipBlockingService.isAgentBlocked(clientIP, userAgent)) {
+            System.out.println("🧪 " + mode + " MODE: IP+Agent " + clientIP + " would be blocked but continuing for testing");
+        }
+
         boolean attackDetected = false;
+        String detectedAttackType = "";
+        int attacksInThisRequest = 0;
 
         for (AttackDetector detector : attackDetectors) {
             if (detector.isEnabled()) {
@@ -47,16 +76,118 @@ public class SecurityMonitoringFilter implements Filter {
                     boolean detected = detector.detectAttack(httpRequest, clientIP);
                     if (detected) {
                         attackDetected = true;
+                        detectedAttackType = detector.getAttackType();
+                        attacksInThisRequest++;
+
+                        System.out.println("🚨 ATTACK DETECTED (" + mode + " MODE): " + detector.getAttackType() +
+                                " from " + clientIP + " via " +
+                                (userAgent != null ? userAgent.substring(0, Math.min(30, userAgent.length())) : "Unknown"));
+
+                        if (shouldImmediatelyBlock(detector.getAttackType())) {
+                            ipBlockingService.blockIP(clientIP,
+                                    "Severe attack detected: " + detector.getAttackType(),
+                                    getSeverityForAttack(detector.getAttackType()),
+                                    userAgent);
+
+                            if (blockingEnabled) {
+                                blockRequest(httpResponse, clientIP,
+                                        "Severe attack detected. Access blocked immediately.");
+                                return;
+                            } else {
+                                System.out.println("🧪 " + mode + " MODE: Would immediately block " + clientIP +
+                                        " for severe attack: " + detector.getAttackType() +
+                                        " (Duration: " + getBlockDurationForSeverity(getSeverityForAttack(detector.getAttackType())) + " minutes)");
+                            }
+                        } else {
+                            boolean wouldBeBlocked = ipBlockingService.markSuspicious(clientIP, userAgent, detector.getAttackType());
+
+                            if (wouldBeBlocked) {
+                                if (blockingEnabled) {
+                                    blockRequest(httpResponse, clientIP,
+                                            "Multiple attacks detected. Access blocked.");
+                                    return;
+                                } else {
+                                    System.out.println("🧪 " + mode + " MODE: Would block " + clientIP +
+                                            " after multiple suspicious activities for: " + detector.getAttackType());
+                                }
+                            } else {
+                                if (!blockingEnabled) {
+                                    System.out.println("🧪 " + mode + " MODE: Marked " + clientIP +
+                                            " as suspicious for: " + detector.getAttackType());
+                                }
+                            }
+                        }
                     }
                 } catch (Exception e) {
-                    System.err.println("Error in detector " + detector.getClass().getSimpleName() +
+                    System.err.println("❌ Error in detector " + detector.getClass().getSimpleName() +
                             ": " + e.getMessage());
                 }
             }
         }
 
-        logRequest(httpRequest, clientIP, attackDetected);
+        if (attackDetected) {
+            if (blockingEnabled) {
+                System.out.println("⚠️ ATTACK LOGGED (" + mode + " MODE): " + attacksInThisRequest + " attack(s) detected from " + clientIP +
+                        " - Request processed with security monitoring");
+            } else {
+                System.out.println("⚠️ ATTACK LOGGED (" + mode + " MODE): " + attacksInThisRequest + " attack(s) detected from " + clientIP +
+                        " - All attacks logged, blocking disabled for testing");
+            }
+        }
+
         chain.doFilter(request, response);
+    }
+
+    private void blockRequest(HttpServletResponse response, String clientIP, String reason) throws IOException {
+        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+        response.setContentType("application/json");
+        response.setHeader("X-Security-Block", "true");
+
+        String jsonResponse = String.format(
+                "{" +
+                        "\"error\": \"Access Denied\"," +
+                        "\"message\": \"%s\"," +
+                        "\"blocked_ip\": \"%s\"," +
+                        "\"timestamp\": \"%s\"," +
+                        "\"mode\": \"PRODUCTION\"," +
+                        "\"contact\": \"Contact administrator if you believe this is an error\"" +
+                        "}",
+                reason, clientIP, java.time.LocalDateTime.now()
+        );
+
+        response.getWriter().write(jsonResponse);
+        response.getWriter().flush();
+
+        System.out.println("🚫 BLOCKED REQUEST (PRODUCTION MODE): " + clientIP + " - " + reason);
+    }
+
+
+    private boolean shouldImmediatelyBlock(String attackType) {
+        return attackType.equals("SQL_INJECTION") ||
+                attackType.equals("COMMAND_INJECTION") ||
+                attackType.equals("XXE") ||
+                attackType.equals("BRUTE_FORCE");
+    }
+
+
+    private org.cyberwatch.model.AttackLog.Severity getSeverityForAttack(String attackType) {
+        return switch (attackType) {
+            case "SQL_INJECTION", "COMMAND_INJECTION", "XXE" -> org.cyberwatch.model.AttackLog.Severity.CRITICAL;
+            case "XSS", "BRUTE_FORCE", "CSRF", "SSRF" -> org.cyberwatch.model.AttackLog.Severity.HIGH;
+            case "DIRECTORY_TRAVERSAL", "FILE_UPLOAD_ATTACK", "LDAP_INJECTION" -> org.cyberwatch.model.AttackLog.Severity.MEDIUM;
+            case "LOG_INJECTION", "DDOS" -> org.cyberwatch.model.AttackLog.Severity.LOW;
+            default -> org.cyberwatch.model.AttackLog.Severity.LOW;
+        };
+    }
+
+
+    private int getBlockDurationForSeverity(org.cyberwatch.model.AttackLog.Severity severity) {
+        return switch (severity) {
+            case CRITICAL -> 120;
+            case HIGH -> 60;
+            case MEDIUM -> 30;
+            case LOW -> 15;
+        };
     }
 
     private String getClientIP(HttpServletRequest request) {
@@ -73,24 +204,20 @@ public class SecurityMonitoringFilter implements Filter {
         return request.getRemoteAddr();
     }
 
+
     private boolean shouldSkipMonitoring(String requestURI) {
         return requestURI.startsWith("/actuator") ||
+                requestURI.startsWith("/swagger-ui") ||
+                requestURI.startsWith("/v3/api-docs") ||
                 requestURI.startsWith("/css/") ||
                 requestURI.startsWith("/js/") ||
                 requestURI.startsWith("/images/") ||
-                requestURI.startsWith("/favicon.ico");
-    }
-
-    private void logRequest(HttpServletRequest request, String clientIP, boolean attackDetected) {
-        if (attackDetected) {
-            System.out.println(String.format("[SECURITY] %s %s from %s - ATTACK DETECTED",
-                    request.getMethod(), request.getRequestURI(), clientIP));
-        }
+                requestURI.startsWith("/favicon.ico") ||
+                requestURI.startsWith("/webjars/");
     }
 
     @Override
     public void destroy() {
-        System.out.println("Security Monitoring Filter destroyed");
+        System.out.println("🛡️ Security Monitoring Filter destroyed");
     }
 }
-

@@ -1,14 +1,13 @@
 package org.cyberwatch.service;
 
-import org.cyberwatch.detector.SecurityMetricsRecorder;
 import org.cyberwatch.model.AttackLog;
 import org.cyberwatch.repository.AttackLogRepository;
-import org.hibernate.service.spi.InjectService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Component;
 
 import jakarta.servlet.http.HttpServletRequest;
+import java.time.LocalDateTime;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
 
@@ -22,13 +21,14 @@ public class BaseDetectionService {
     private ApplicationEventPublisher eventPublisher;
 
     @Autowired
-    public SecurityMetricsRecorder securityMetricsRecorder;
+    private IPBlockingService ipBlockingService;
 
-    // In-memory cache for tracking request counts by IP
     private final ConcurrentHashMap<String, AtomicLong> ipRequestCounts = new ConcurrentHashMap<>();
 
-    protected void logAttack(String attackType, String sourceIp, String description,
-                             HttpServletRequest request) {
+
+    protected AttackLog logAttack(String attackType, String sourceIp, String description,
+                                  HttpServletRequest request) {
+
         AttackLog log = new AttackLog(attackType, sourceIp, description);
         log.setTargetEndpoint(request.getRequestURI());
         log.setRequestMethod(request.getMethod());
@@ -39,12 +39,127 @@ public class BaseDetectionService {
             log.setRequestPayload(getRequestPayload(request));
         }
 
-        log.setSeverity(determineSeverity(attackType));
-        attackLogRepository.save(log);
-        eventPublisher.publishEvent(log);
+        AttackLog.Severity severity = calculateAdvancedSeverity(attackType, sourceIp, request);
+        log.setSeverity(severity);
 
-        System.out.println("[SECURITY ALERT] " + attackType + " detected from " +
-                sourceIp + ": " + description);
+        boolean shouldBlock = shouldBlockAttack(attackType, severity, sourceIp);
+        log.setBlocked(shouldBlock);
+
+        if (shouldBlock) {
+            ipBlockingService.blockIP(sourceIp,
+                    "Attack detected: " + attackType + " - " + description,
+                    severity,
+                    request.getHeader("User-Agent"));
+        }
+
+        AttackLog savedLog = attackLogRepository.save(log);
+        eventPublisher.publishEvent(savedLog);
+
+        String blockStatus = shouldBlock ? "🚫 BLOCKED" : "📝 LOGGED";
+        System.out.println(String.format(
+                "%s [%s] %s from %s (%s) - %s",
+                blockStatus, severity, attackType, sourceIp,
+                request.getHeader("User-Agent") != null ?
+                        request.getHeader("User-Agent").substring(0, Math.min(30, request.getHeader("User-Agent").length())) :
+                        "Unknown",
+                description
+        ));
+
+        return savedLog;
+    }
+
+
+    private AttackLog.Severity calculateAdvancedSeverity(String attackType, String sourceIp, HttpServletRequest request) {
+        int severityScore = 0;
+
+        severityScore += getBaseAttackSeverity(attackType);
+        severityScore += calculateFrequencyBonus(sourceIp);
+        severityScore += analyzeRequestPatterns(request);
+        severityScore += detectEvasionTechniques(request);
+
+        if (severityScore >= 80) return AttackLog.Severity.CRITICAL;
+        if (severityScore >= 60) return AttackLog.Severity.HIGH;
+        if (severityScore >= 40) return AttackLog.Severity.MEDIUM;
+        return AttackLog.Severity.LOW;
+    }
+
+    private int getBaseAttackSeverity(String attackType) {
+        return switch (attackType) {
+            case "SQL_INJECTION" -> 70;
+            case "COMMAND_INJECTION" -> 80;
+            case "XXE" -> 75;
+            case "SSRF" -> 65;
+            case "FILE_UPLOAD_ATTACK" -> 70;
+            case "LDAP_INJECTION" -> 60;
+            case "XSS" -> 50;
+            case "BRUTE_FORCE" -> 45;
+            case "CSRF" -> 40;
+            case "LOG_INJECTION" -> 35;
+            case "DIRECTORY_TRAVERSAL" -> 40;
+            case "DDOS" -> 60;
+            default -> 25;
+        };
+    }
+
+    private int calculateFrequencyBonus(String sourceIp) {
+
+        LocalDateTime lastHour = LocalDateTime.now().minusHours(1);
+        long recentAttacks = attackLogRepository.findBySourceIpAndDetectedAtAfter(sourceIp, lastHour).size();
+
+        if (recentAttacks >= 10) return 30;
+        if (recentAttacks >= 5) return 20;
+        if (recentAttacks >= 2) return 10;
+        return 0;
+    }
+
+    private int analyzeRequestPatterns(HttpServletRequest request) {
+        int patternScore = 0;
+        String queryString = request.getQueryString();
+        String userAgent = request.getHeader("User-Agent");
+
+        if (queryString != null && queryString.length() > 500) patternScore += 15;
+
+        if (userAgent != null) {
+            String ua = userAgent.toLowerCase();
+            if (ua.contains("sqlmap") || ua.contains("nmap") ||
+                    ua.contains("nikto") || ua.contains("curl")) {
+                patternScore += 25;
+            }
+        }
+
+        if (queryString != null &&
+                (queryString.contains("%") && queryString.split("%").length > 5)) {
+            patternScore += 10;
+        }
+
+        return patternScore;
+    }
+
+    private int detectEvasionTechniques(HttpServletRequest request) {
+        int evasionScore = 0;
+        String queryString = request.getQueryString();
+
+        if (queryString != null) {
+            if (queryString.contains("%25")) evasionScore += 15;
+            if (queryString.contains("\\u")) evasionScore += 10;
+            if (queryString.contains("/*") && queryString.contains("*/")) evasionScore += 10;
+        }
+
+        return evasionScore;
+    }
+
+
+    private boolean shouldBlockAttack(String attackType, AttackLog.Severity severity, String sourceIp) {
+
+        if (severity == AttackLog.Severity.CRITICAL) return true;
+
+        if (severity == AttackLog.Severity.HIGH) {
+            LocalDateTime lastHour = LocalDateTime.now().minusHours(1);
+            long recentAttacks = attackLogRepository.findBySourceIpAndDetectedAtAfter(sourceIp, lastHour).size();
+            return recentAttacks >= 3;
+        }
+
+        return attackType.equals("BRUTE_FORCE") || attackType.equals("SQL_INJECTION");
     }
 
     protected String getClientIP(HttpServletRequest request) {
@@ -74,27 +189,11 @@ public class BaseDetectionService {
         ipRequestCounts.remove(ip);
     }
 
-    private AttackLog.Severity determineSeverity(String attackType) {
-        switch (attackType.toUpperCase()) {
-            case "DDOS":
-            case "SQL_INJECTION":
-                return AttackLog.Severity.CRITICAL;
-            case "XSS":
-            case "BRUTE_FORCE":
-                return AttackLog.Severity.HIGH;
-            case "PORT_SCAN":
-            case "DIRECTORY_TRAVERSAL":
-                return AttackLog.Severity.MEDIUM;
-            default:
-                return AttackLog.Severity.LOW;
-        }
-    }
-
     private String getRequestPayload(HttpServletRequest request) {
         try {
             return request.getParameterMap().toString();
         } catch (Exception e) {
-            return "Unable to capture payload";
+            return "Unable to capture payload: " + e.getMessage();
         }
     }
 }

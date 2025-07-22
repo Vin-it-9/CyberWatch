@@ -30,4 +30,10 @@ public interface AttackLogRepository extends JpaRepository<AttackLog, Long> {
     List<Object[]> getTopSourceIps(@Param("startTime") LocalDateTime startTime);
 
     List<AttackLog> findTop50ByOrderByDetectedAtDesc();
+
+    List<AttackLog> findBySourceIpAndDetectedAtAfter(String sourceIp, LocalDateTime dateTime);
+
+    long countByAttackType(String attackType);
+
+
 }

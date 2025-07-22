@@ -11,7 +11,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 @Component
 public class DDoSDetector extends BaseDetectionService implements AttackDetector {
 
-    private static final int DDOS_THRESHOLD = 100; // requests per minute
+    private static final int DDOS_THRESHOLD = 100;
     private static final int TIME_WINDOW_SECONDS = 60;
 
     private final ConcurrentHashMap<String, AtomicInteger> requestCounts = new ConcurrentHashMap<>();
@@ -21,11 +21,9 @@ public class DDoSDetector extends BaseDetectionService implements AttackDetector
     public boolean detectAttack(HttpServletRequest request, String clientIP) {
         long currentTime = System.currentTimeMillis();
 
-        // Initialize or get existing counters
         AtomicInteger count = requestCounts.computeIfAbsent(clientIP, k -> new AtomicInteger(0));
         Long firstRequest = firstRequestTime.computeIfAbsent(clientIP, k -> currentTime);
 
-        // Reset counter if time window has passed
         if (currentTime - firstRequest > TIME_WINDOW_SECONDS * 1000) {
             count.set(0);
             firstRequestTime.put(clientIP, currentTime);
@@ -48,7 +46,7 @@ public class DDoSDetector extends BaseDetectionService implements AttackDetector
         return "DDOS";
     }
 
-    @Scheduled(fixedRate = 300000) // Clean up every 5 minutes
+    @Scheduled(fixedRate = 300000)
     public void cleanup() {
         long currentTime = System.currentTimeMillis();
         firstRequestTime.entrySet().removeIf(entry ->
