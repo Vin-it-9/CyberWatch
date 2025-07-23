@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Access Denied - CyberWatch Security</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-orange: #ff8e00;
+            --accent-yellow: #d29922;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans', Helvetica, Arial, sans-serif;
+        }
+
+        .github-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        .pulse-animation {
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-in;
+        }
+
+        @keyframes fadeIn {
+            0% { opacity: 0; transform: translateY(20px); }
+            100% { opacity: 1; transform: translateY(0); }
+        }
+
+        .severity-critical { color: var(--accent-red); }
+        .severity-high { color: var(--accent-orange); }
+        .severity-medium { color: var(--accent-yellow); }
+        .severity-low { color: var(--accent-blue); }
+
+        .countdown {
+            font-family: 'Courier New', monospace;
+            font-size: 1.2rem;
+            font-weight: bold;
+        }
+
+        .blocked-badge {
+            background: linear-gradient(135deg, var(--accent-red), #dc2626);
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            color: white;
+            font-weight: bold;
+            font-size: 0.9rem;
+        }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+<div class="max-w-2xl w-full">
+    <div class="github-card p-8 text-center fade-in">
+        <div class="mb-6">
+            <h1 class="text-3xl font-bold mb-2" style="color: var(--text-primary);">Access Denied</h1>
+            <div class="blocked-badge inline-block">
+                <i class="fas fa-ban mr-2"></i>IP Address Blocked
+            </div>
+        </div>
+
+        <div class="github-card p-4 mb-6 text-left">
+            <h3 class="text-lg font-semibold mb-3" style="color: var(--text-primary);">
+                <i class="fas fa-info-circle mr-2" style="color: var(--accent-blue);"></i>Block Details
+            </h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                <div>
+                    <span style="color: var(--text-secondary);">Blocked IP:</span>
+                    <span class="font-mono ml-2" style="color: var(--text-primary);" th:text="${blockedIP}">Unknown</span>
+                </div>
+                <div>
+                    <span style="color: var(--text-secondary);">Severity:</span>
+                    <span class="ml-2 font-semibold"
+                          th:class="'severity-' + ${#strings.toLowerCase(severity)}"
+                          th:text="${severity}">UNKNOWN</span>
+                </div>
+                <div class="md:col-span-2">
+                    <span style="color: var(--text-secondary);">Reason:</span>
+                    <span class="ml-2" style="color: var(--text-primary);" th:text="${blockReason}">Security violation detected</span>
+                </div>
+                <div th:if="${blockedAt}">
+                    <span style="color: var(--text-secondary);">Blocked At:</span>
+                    <span class="ml-2" style="color: var(--text-primary);" th:text="${blockedAt}">Unknown</span>
+                </div>
+                <div th:if="${expiresAt}">
+                    <span style="color: var(--text-secondary);">Expires At:</span>
+                    <span class="ml-2" style="color: var(--text-primary);" th:text="${expiresAt}">Unknown</span>
+                </div>
+            </div>
+        </div>
+
+        <div th:if="${remainingTime > 0}" class="github-card p-4 mb-6">
+            <h3 class="text-lg font-semibold mb-3" style="color: var(--text-primary);">
+                <i class="fas fa-clock mr-2" style="color: var(--accent-yellow);"></i>Time Remaining
+            </h3>
+            <div class="countdown" style="color: var(--accent-orange);" id="countdown">
+                <span th:text="${remainingTime}">0</span> minutes remaining
+            </div>
+        </div>
+
+        <div class="github-card p-4 mb-6 text-left">
+            <h3 class="text-lg font-semibold mb-3" style="color: var(--text-primary);">
+                <i class="fas fa-question-circle mr-2" style="color: var(--accent-orange);"></i>What Happened?
+            </h3>
+            <div class="space-y-2 text-sm" style="color: var(--text-secondary);">
+                <p>• Your IP address has been temporarily blocked by our security system</p>
+                <p>• This typically occurs after detecting suspicious or malicious activity</p>
+                <p>• The block is automatic and designed to protect our systems</p>
+                <p>• Access will be restored automatically when the block expires</p>
+            </div>
+        </div>
+
+        <div class="github-card p-4 mb-6 text-left">
+            <h3 class="text-lg font-semibold mb-3" style="color: var(--text-primary);">
+                <i class="fas fa-lightbulb mr-2" style="color: var(--accent-green);"></i>What Can You Do?
+            </h3>
+            <div class="space-y-3">
+                <div class="flex items-start">
+                    <i class="fas fa-clock mt-1 mr-3" style="color: var(--accent-blue);"></i>
+                    <div>
+                        <p class="font-medium" style="color: var(--text-primary);">Wait for Automatic Unblock</p>
+                        <p class="text-sm" style="color: var(--text-secondary);">The block will expire automatically. Check the countdown above.</p>
+                    </div>
+                </div>
+                <div class="flex items-start">
+                    <i class="fas fa-wifi mt-1 mr-3" style="color: var(--accent-orange);"></i>
+                    <div>
+                        <p class="font-medium" style="color: var(--text-primary);">Check Your Network</p>
+                        <p class="text-sm" style="color: var(--text-secondary);">Ensure your network isn't compromised and try from a different connection.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex flex-col sm:flex-row gap-4 justify-center">
+            <button onclick="checkStatus()"
+                    class="px-6 py-3 rounded-md text-white font-medium transition-all hover:opacity-80"
+                    style="background-color: var(--accent-blue);">
+                <i class="fas fa-sync-alt mr-2"></i>Check Status
+            </button>
+            <a href="/"
+               class="px-6 py-3 rounded-md text-white font-medium transition-all hover:opacity-80 text-center"
+               style="background-color: var(--accent-orange);">
+                <i class="fas fa-home mr-2"></i>Home Page
+            </a>
+        </div>
+
+    </div>
+</div>
+
+<script th:inline="javascript">
+
+    let remainingMinutes = /*[[${remainingTime}]]*/ 0;
+    const contactEmail = /*[[${contactEmail}]]*/ 'security@cyberwatch.com';
+
+    function updateCountdown() {
+        if (remainingMinutes > 0) {
+            const hours = Math.floor(remainingMinutes / 60);
+            const minutes = remainingMinutes % 60;
+
+            let timeText = '';
+            if (hours > 0) {
+                timeText = `${hours}h ${minutes}m remaining`;
+            } else {
+                timeText = `${minutes} minutes remaining`;
+            }
+
+            const countdownElement = document.getElementById('countdown');
+            if (countdownElement) {
+                countdownElement.textContent = timeText;
+            }
+
+            remainingMinutes--;
+
+            if (remainingMinutes <= 0) {
+                showNotification('Block expired! Checking access...', 'info');
+                setTimeout(() => {
+                    window.location.reload();
+                }, 2000);
+            }
+        }
+    }
+
+    if (remainingMinutes > 0) {
+        setInterval(updateCountdown, 60000);
+    }
+
+    function checkStatus() {
+        showNotification('Checking access status...', 'info');
+
+        fetch('/', { method: 'HEAD' })
+            .then(response => {
+                if (response.ok) {
+                    showNotification('Access restored! Redirecting...', 'success');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
+                } else if (response.status === 403) {
+                    showNotification('Still blocked. Please wait for expiration or contact support.', 'warning');
+                } else {
+                    showNotification('Unable to check status. Please try again later.', 'error');
+                }
+            })
+            .catch(error => {
+                showNotification('Network error. Please check your connection.', 'error');
+            });
+    }
+
+    function contactSupport() {
+        const subject = encodeURIComponent('CyberWatch - IP Block Appeal');
+        const body = encodeURIComponent(`Hello,
+
+I am writing to appeal an IP block on my address.
+
+Blocked IP: ${/*[[${blockedIP}]]*/ 'Unknown'}
+Block Reason: ${/*[[${blockReason}]]*/ 'Unknown'}
+Timestamp: ${/*[[${currentTime}]]*/ 'Unknown'}
+
+I believe this block was issued in error because:
+[Please explain your situation]
+
+Thank you for your assistance.`);
+
+        window.location.href = `mailto:${contactEmail}?subject=${subject}&body=${body}`;
+    }
+
+    function showNotification(message, type) {
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 px-6 py-3 rounded shadow-lg z-50 text-white transition-all`;
+
+        const colors = {
+            'success': 'var(--accent-green)',
+            'error': 'var(--accent-red)',
+            'warning': 'var(--accent-orange)',
+            'info': 'var(--accent-blue)'
+        };
+
+        notification.style.backgroundColor = colors[type] || colors.info;
+        notification.textContent = message;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.remove();
+        }, 4000);
+    }
+
+    setInterval(() => {
+        if (remainingMinutes <= 5) {
+            checkStatus();
+        }
+    }, 300000);
+</script>
+</body>
+</html>
