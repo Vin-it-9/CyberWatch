@@ -35,5 +35,6 @@ public interface AttackLogRepository extends JpaRepository<AttackLog, Long> {
 
     long countByAttackType(String attackType);
 
+    long countByBlockedTrueAndDetectedAtAfter(LocalDateTime dateTime);
 
 }

@@ -53,14 +53,14 @@ public class SecurityMonitoringFilter implements Filter {
         String mode = blockingEnabled ? "PRODUCTION" : "TESTING";
 
         if (blockingEnabled && ipBlockingService.isIPBlocked(clientIP)) {
-            blockRequest(httpResponse, clientIP, "IP is currently blocked due to previous attacks");
+            blockRequest(httpRequest, httpResponse, clientIP, "IP is currently blocked due to previous attacks");
             return;
         } else if (!blockingEnabled && ipBlockingService.isBlocked(clientIP)) {
             System.out.println("🧪 " + mode + " MODE: IP " + clientIP + " would be blocked but continuing for testing");
         }
 
         if (blockingEnabled && ipBlockingService.isAgentBlocked(clientIP, userAgent)) {
-            blockRequest(httpResponse, clientIP, "IP + User-Agent combination is blocked");
+            blockRequest(httpRequest, httpResponse, clientIP, "IP + User-Agent combination is blocked");
             return;
         } else if (!blockingEnabled && ipBlockingService.isAgentBlocked(clientIP, userAgent)) {
             System.out.println("🧪 " + mode + " MODE: IP+Agent " + clientIP + " would be blocked but continuing for testing");
@@ -90,7 +90,7 @@ public class SecurityMonitoringFilter implements Filter {
                                     userAgent);
 
                             if (blockingEnabled) {
-                                blockRequest(httpResponse, clientIP,
+                                blockRequest(httpRequest, httpResponse, clientIP,
                                         "Severe attack detected. Access blocked immediately.");
                                 return;
                             } else {
@@ -103,7 +103,7 @@ public class SecurityMonitoringFilter implements Filter {
 
                             if (wouldBeBlocked) {
                                 if (blockingEnabled) {
-                                    blockRequest(httpResponse, clientIP,
+                                    blockRequest(httpRequest, httpResponse, clientIP,
                                             "Multiple attacks detected. Access blocked.");
                                     return;
                                 } else {
@@ -138,27 +138,63 @@ public class SecurityMonitoringFilter implements Filter {
         chain.doFilter(request, response);
     }
 
-    private void blockRequest(HttpServletResponse response, String clientIP, String reason) throws IOException {
-        response.setStatus(HttpServletResponse.SC_FORBIDDEN);
-        response.setContentType("application/json");
-        response.setHeader("X-Security-Block", "true");
+    private void blockRequest(HttpServletRequest request, HttpServletResponse response, String clientIP, String reason) throws IOException {
 
-        String jsonResponse = String.format(
-                "{" +
-                        "\"error\": \"Access Denied\"," +
-                        "\"message\": \"%s\"," +
-                        "\"blocked_ip\": \"%s\"," +
-                        "\"timestamp\": \"%s\"," +
-                        "\"mode\": \"PRODUCTION\"," +
-                        "\"contact\": \"Contact administrator if you believe this is an error\"" +
-                        "}",
-                reason, clientIP, java.time.LocalDateTime.now()
-        );
+        String userAgent = request.getHeader("User-Agent");
+        String accept = request.getHeader("Accept");
 
-        response.getWriter().write(jsonResponse);
-        response.getWriter().flush();
+        boolean isApiRequest = (accept != null && accept.contains("application/json")) ||
+                (userAgent != null && (userAgent.contains("curl") ||
+                        userAgent.contains("Postman") ||
+                        userAgent.contains("HTTPie") ||
+                        userAgent.contains("python-requests") ||
+                        userAgent.contains("Java/") ||
+                        userAgent.contains("okhttp")));
 
-        System.out.println("🚫 BLOCKED REQUEST (PRODUCTION MODE): " + clientIP + " - " + reason);
+        if (isApiRequest) {
+            response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            response.setContentType("application/json");
+            response.setHeader("X-Security-Block", "true");
+
+            String jsonResponse = String.format(
+                    "{" +
+                            "\"error\": \"Access Denied\"," +
+                            "\"message\": \"%s\"," +
+                            "\"blocked_ip\": \"%s\"," +
+                            "\"timestamp\": \"%s\"," +
+                            "\"mode\": \"%s\"," +
+                            "\"contact\": \"Contact administrator if you believe this is an error\"" +
+                            "}",
+                    reason, clientIP, java.time.LocalDateTime.now(),
+                    detectionConfig.isEnableRealBlocking() ? "PRODUCTION" : "TESTING"
+            );
+
+            response.getWriter().write(jsonResponse);
+            response.getWriter().flush();
+
+        } else {
+            try {
+                String redirectUrl = String.format("/access-denied?ip=%s&reason=%s&timestamp=%s",
+                        java.net.URLEncoder.encode(clientIP, "UTF-8"),
+                        java.net.URLEncoder.encode(reason, "UTF-8"),
+                        java.net.URLEncoder.encode(java.time.LocalDateTime.now().toString(), "UTF-8")
+                );
+
+                response.sendRedirect(redirectUrl);
+            } catch (Exception e) {
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN);
+                response.setContentType("application/json");
+                String fallbackJson = String.format(
+                        "{\"error\":\"Access Denied\",\"message\":\"%s\",\"blocked_ip\":\"%s\"}",
+                        reason, clientIP
+                );
+                response.getWriter().write(fallbackJson);
+                response.getWriter().flush();
+            }
+        }
+
+        System.out.println("🚫 BLOCKED REQUEST: " + clientIP + " - " + reason +
+                " (Client: " + (isApiRequest ? "API" : "Browser") + ")");
     }
 
 
@@ -168,7 +204,6 @@ public class SecurityMonitoringFilter implements Filter {
                 attackType.equals("XXE") ||
                 attackType.equals("BRUTE_FORCE");
     }
-
 
     private org.cyberwatch.model.AttackLog.Severity getSeverityForAttack(String attackType) {
         return switch (attackType) {
@@ -189,6 +224,7 @@ public class SecurityMonitoringFilter implements Filter {
             case LOW -> 15;
         };
     }
+
 
     private String getClientIP(HttpServletRequest request) {
         String xForwardedFor = request.getHeader("X-Forwarded-For");
@@ -213,7 +249,9 @@ public class SecurityMonitoringFilter implements Filter {
                 requestURI.startsWith("/js/") ||
                 requestURI.startsWith("/images/") ||
                 requestURI.startsWith("/favicon.ico") ||
-                requestURI.startsWith("/webjars/");
+                requestURI.startsWith("/webjars/") ||
+                requestURI.startsWith("/access-denied") ||
+                requestURI.startsWith("/error/");
     }
 
     @Override

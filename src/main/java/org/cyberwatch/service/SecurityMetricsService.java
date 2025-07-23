@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -20,18 +21,14 @@ public class SecurityMetricsService {
 
     public SecurityMetrics getCurrentMetrics() {
         LocalDateTime last24Hours = LocalDateTime.now().minusHours(24);
-        LocalDateTime lastHour = LocalDateTime.now().minusHours(1);
 
         SecurityMetrics metrics = new SecurityMetrics();
 
-        // Total attacks in last 24 hours
         long totalAttacks = attackLogRepository.countAttacksSince(last24Hours);
         metrics.setTotalAttacks(totalAttacks);
 
-        // Blocked attacks (for demo, assume 10% are blocked)
-        metrics.setBlockedAttacks(totalAttacks / 10);
+        metrics.setBlockedAttacks(calculateBlockedAttacks(last24Hours));
 
-        // Attacks by type
         List<Object[]> attacksByType = attackLogRepository.getAttackCountsByType(last24Hours);
         Map<String, Long> attackTypeMap = new HashMap<>();
         for (Object[] row : attacksByType) {
@@ -39,7 +36,6 @@ public class SecurityMetricsService {
         }
         metrics.setAttacksByType(attackTypeMap);
 
-        // Top source IPs
         List<Object[]> topIPs = attackLogRepository.getTopSourceIps(last24Hours);
         Map<String, Long> topSourceIps = new HashMap<>();
         for (Object[] row : topIPs) {
@@ -51,10 +47,9 @@ public class SecurityMetricsService {
     }
 
     public Map<String, Object> getHourlyAttackStats() {
-        Map<String, Object> stats = new HashMap<>();
+        Map<String, Object> stats = new LinkedHashMap<>();
         LocalDateTime now = LocalDateTime.now();
 
-        // Last 24 hours, hour by hour
         for (int i = 23; i >= 0; i--) {
             LocalDateTime hourStart = now.minusHours(i + 1);
             LocalDateTime hourEnd = now.minusHours(i);
@@ -62,7 +57,8 @@ public class SecurityMetricsService {
             long count = attackLogRepository.findByDetectedAtBetweenOrderByDetectedAtDesc(
                     hourStart, hourEnd).size();
 
-            stats.put(hourStart.getHour() + ":00", count);
+            String hourLabel = String.format("%02d:00", hourStart.getHour());
+            stats.put(hourLabel, count);
         }
 
         return stats;
@@ -99,5 +95,15 @@ public class SecurityMetricsService {
                     return data;
                 })
                 .collect(Collectors.toList());
+    }
+
+    private long calculateBlockedAttacks(LocalDateTime since) {
+        try {
+            return attackLogRepository.countByBlockedTrueAndDetectedAtAfter(since);
+        } catch (Exception e) {
+            List<AttackLog> attacks = attackLogRepository.findByDetectedAtBetweenOrderByDetectedAtDesc(
+                    since, LocalDateTime.now());
+            return attacks.stream().mapToLong(attack -> attack.isBlocked() ? 1 : 0).sum();
+        }
     }
 }

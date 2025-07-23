@@ -21,17 +21,30 @@ public class SecurityConfig {
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(authz -> authz
-                        .requestMatchers("/api/public/**", "/test/**", "/ws/**","/home","/swagger-ui","api/security/**","api/attack/**","/api/admin/**").permitAll()
+                        .requestMatchers(
+                                "/",
+                                "/dashboard",
+                                "/dashboard/**",
+                                "/css/**",
+                                "/js/**",
+                                "/images/**",
+                                "/static/**",
+                                "/webjars/**",
+                                "/favicon.ico"
+                        ).permitAll()
+                        .requestMatchers("/ws/**", "/websocket/**").permitAll()
+                        .requestMatchers("/api/public/**", "/test/**").permitAll()
+                        .requestMatchers("/api/security/**").permitAll()
+                        .requestMatchers("/api/attack/**").permitAll()
+                        .requestMatchers("/api/admin/**").permitAll()
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                        .anyRequest().authenticated()
+                        .requestMatchers("/access-denied", "/error/**").permitAll()
+                        .anyRequest().permitAll()
                 )
                 .headers(headers -> headers
                         .frameOptions(frameOptions -> frameOptions.sameOrigin())
                         .contentTypeOptions(contentTypeOptions -> {})
-                        .httpStrictTransportSecurity(hsts -> hsts
-                                .maxAgeInSeconds(31536000)
-                                .includeSubDomains(true))
                 );
 
         return http.build();

@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attack Analysis - CyberWatch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-orange: #ff8e00;
+            --accent-yellow: #d29922;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .github-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        .github-nav {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .severity-critical { background-color: var(--accent-red) !important; }
+        .severity-high { background-color: var(--accent-orange) !important; }
+        .severity-medium { background-color: var(--accent-yellow) !important; }
+        .severity-low { background-color: var(--accent-blue) !important; }
+
+        .status-blocked { background-color: var(--accent-red) !important; }
+        .status-detected { background-color: var(--accent-orange) !important; }
+    </style>
+</head>
+<body class="min-h-screen">
+<nav class="github-nav">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold" style="color: var(--accent-blue);">
+                        <i class="fas fa-shield-alt mr-2"></i>CyberWatch
+                    </h1>
+                </div>
+                <div class="hidden md:block ml-10">
+                    <div class="flex items-baseline space-x-4">
+                        <a href="/dashboard" class="px-3 py-2 rounded-md text-sm font-medium hover:github-card" style="color: var(--text-secondary);">Dashboard</a>
+                        <a href="/dashboard/attacks" class="px-3 py-2 rounded-md text-sm font-medium github-card" style="color: var(--text-primary);">Attacks</a>
+                        <a href="/dashboard/analytics" class="px-3 py-2 rounded-md text-sm font-medium hover:github-card" style="color: var(--text-secondary);">Analytics</a>
+                        <a href="/dashboard/settings" class="px-3 py-2 rounded-md text-sm font-medium hover:github-card" style="color: var(--text-secondary);">Settings</a>
+                    </div>
+                </div>
+            </div>
+            <div class="text-sm" style="color: var(--text-secondary);">
+                <a href="/dashboard" class="hover:underline">← Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0">
+        <h1 class="text-2xl font-bold mb-6" style="color: var(--text-primary);">
+            <i class="fas fa-exclamation-triangle mr-2" style="color: var(--accent-red);"></i>Attack Analysis
+        </h1>
+
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-6">
+            <div class="github-card p-4">
+                <div class="text-2xl font-bold" style="color: var(--accent-red);"
+                     th:text="${recentAttacks != null ? #lists.size(recentAttacks) : 0}">0</div>
+                <div class="text-sm" style="color: var(--text-secondary);">Total Attacks</div>
+            </div>
+            <div class="github-card p-4">
+                <div class="text-2xl font-bold" style="color: var(--accent-orange);"
+                     th:text="${recentAttacks != null ? recentAttacks.?[blocked == true].size() : 0}">0</div>
+                <div class="text-sm" style="color: var(--text-secondary);">Blocked</div>
+            </div>
+            <div class="github-card p-4">
+                <div class="text-2xl font-bold" style="color: var(--accent-yellow);"
+                     th:text="${recentAttacks != null ? recentAttacks.?[severity != null and severity.name() == 'CRITICAL'].size() : 0}">0</div>
+                <div class="text-sm" style="color: var(--text-secondary);">Critical</div>
+            </div>
+            <div class="github-card p-4">
+                <div class="text-2xl font-bold" style="color: var(--accent-blue);">
+                    <span th:text="${recentAttacks != null ? #sets.size(#sets.toSet(recentAttacks.![sourceIp])) : 0}">0</span>
+                </div>
+                <div class="text-sm" style="color: var(--text-secondary);">Unique IPs</div>
+            </div>
+        </div>
+
+        <div class="github-card overflow-hidden">
+            <div class="px-6 py-4" style="border-bottom: 1px solid var(--border-color);">
+                <h3 class="text-lg font-semibold" style="color: var(--text-primary);">Recent Security Attacks</h3>
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full">
+                    <thead style="background-color: var(--bg-tertiary);">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Timestamp</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Attack Type</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Source IP</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Target</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Severity</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Status</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium uppercase tracking-wider" style="color: var(--text-secondary);">Description</th>
+                    </tr>
+                    </thead>
+                    <tbody style="background-color: var(--bg-secondary);">
+                    <tr th:if="${recentAttacks == null or #lists.isEmpty(recentAttacks)}">
+                        <td colspan="7" class="px-6 py-8 text-center" style="color: var(--text-secondary);">
+                            <i class="fas fa-shield-alt text-3xl mb-2"></i>
+                            <p>No attacks detected yet</p>
+                        </td>
+                    </tr>
+
+                    <tr th:each="attack : ${recentAttacks}" th:if="${attack != null}"
+                        style="border-bottom: 1px solid var(--border-color);">
+
+                        <td class="px-6 py-4 whitespace-nowrap text-sm" style="color: var(--text-secondary);">
+                            <span th:text="${attack.detectedAt != null ? #temporals.format(attack.detectedAt, 'yyyy-MM-dd HH:mm:ss') : 'Unknown'}">Unknown</span>
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium" style="color: var(--text-primary);">
+                            <span th:text="${attack.attackType ?: 'Unknown'}">Unknown</span>
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-sm" style="color: var(--text-secondary);">
+                            <span th:text="${attack.sourceIp ?: 'Unknown'}">Unknown</span>
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap text-sm" style="color: var(--text-secondary);">
+                            <span th:text="${attack.targetEndpoint ?: 'Unknown'}">Unknown</span>
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap">
+                                    <span th:if="${attack.severity != null}"
+                                          class="px-2 py-1 text-xs font-medium rounded-full text-white"
+                                          th:classappend="${attack.severity.name() == 'CRITICAL'} ? 'severity-critical' :
+                                                         (${attack.severity.name() == 'HIGH'} ? 'severity-high' :
+                                                         (${attack.severity.name() == 'MEDIUM'} ? 'severity-medium' : 'severity-low'))"
+                                          th:text="${attack.severity}">
+                                    </span>
+                            <span th:if="${attack.severity == null}"
+                                  class="px-2 py-1 text-xs font-medium rounded-full text-white severity-low">
+                                        Unknown
+                                    </span>
+                        </td>
+
+                        <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full text-white"
+                                          th:classappend="${attack.blocked} ? 'status-blocked' : 'status-detected'"
+                                          th:text="${attack.blocked} ? 'Blocked' : 'Detected'">
+                                        Detected
+                                    </span>
+                        </td>
+
+                        <td class="px-6 py-4 text-sm" style="color: var(--text-secondary);">
+                                    <span th:text="${attack.description != null ? (attack.description.length() > 60 ? attack.description.substring(0, 60) + '...' : attack.description) : 'No description'}">
+                                        No description
+                                    </span>
+                        </td>
+                    </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+</body>
+</html>

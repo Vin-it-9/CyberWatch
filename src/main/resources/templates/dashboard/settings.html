@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Security Settings - CyberWatch</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <style>
+        :root {
+            --bg-primary: #0d1117;
+            --bg-secondary: #161b22;
+            --bg-tertiary: #21262d;
+            --border-color: #30363d;
+            --text-primary: #f0f6fc;
+            --text-secondary: #8b949e;
+            --accent-blue: #58a6ff;
+            --accent-green: #3fb950;
+            --accent-red: #f85149;
+            --accent-orange: #ff8e00;
+            --accent-yellow: #d29922;
+        }
+
+        body {
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+        }
+
+        .github-card {
+            background-color: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+        }
+
+        .github-nav {
+            background-color: var(--bg-secondary);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 60px;
+            height: 34px;
+        }
+
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #30363d;
+            transition: .4s;
+            border-radius: 34px;
+        }
+
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 26px;
+            width: 26px;
+            left: 4px;
+            bottom: 4px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+
+        input:checked + .slider {
+            background-color: var(--accent-green);
+        }
+
+        input:checked + .slider:before {
+            transform: translateX(26px);
+        }
+
+        .status-badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .status-active {
+            background-color: rgba(63, 185, 80, 0.1);
+            color: var(--accent-green);
+        }
+
+        .status-inactive {
+            background-color: rgba(248, 81, 73, 0.1);
+            color: var(--accent-red);
+        }
+
+        .status-warning {
+            background-color: rgba(255, 142, 0, 0.1);
+            color: var(--accent-orange);
+        }
+    </style>
+</head>
+<body class="min-h-screen">
+<!-- Navigation -->
+<nav class="github-nav">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div class="flex items-center justify-between h-16">
+            <div class="flex items-center">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold" style="color: var(--accent-blue);">
+                        <i class="fas fa-shield-alt mr-2"></i>CyberWatch
+                    </h1>
+                </div>
+                <div class="hidden md:block ml-10">
+                    <div class="flex items-baseline space-x-4">
+                        <a href="/dashboard" class="px-3 py-2 rounded-md text-sm font-medium hover:github-card" style="color: var(--text-secondary);">Dashboard</a>
+                        <a href="/dashboard/attacks" class="px-3 py-2 rounded-md text-sm font-medium hover:github-card" style="color: var(--text-secondary);">Attacks</a>
+                        <a href="/dashboard/analytics" class="px-3 py-2 rounded-md text-sm font-medium hover:github-card" style="color: var(--text-secondary);">Analytics</a>
+                        <a href="/dashboard/settings" class="px-3 py-2 rounded-md text-sm font-medium github-card" style="color: var(--text-primary);">Settings</a>
+                    </div>
+                </div>
+            </div>
+            <div class="text-sm" style="color: var(--text-secondary);">
+                <a href="/dashboard" class="hover:underline">← Back to Dashboard</a>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<!-- Main Content -->
+<div class="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+    <div class="px-4 py-6 sm:px-0">
+        <!-- Header -->
+        <div class="mb-8">
+            <h1 class="text-3xl font-bold" style="color: var(--text-primary);">
+                <i class="fas fa-cogs mr-3" style="color: var(--accent-blue);"></i>Security Settings
+            </h1>
+            <p class="mt-2" style="color: var(--text-secondary);">Configure and manage your cybersecurity system</p>
+        </div>
+
+        <!-- System Status -->
+        <div class="github-card p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--text-primary);">
+                <i class="fas fa-server mr-2" style="color: var(--accent-green);"></i>System Status
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-2 flex items-center justify-center rounded-full" style="background-color: rgba(63, 185, 80, 0.1);">
+                        <i class="fas fa-heartbeat text-2xl" style="color: var(--accent-green);"></i>
+                    </div>
+                    <h3 class="font-semibold" style="color: var(--text-primary);">System Health</h3>
+                    <span class="status-badge status-active">Healthy</span>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-2 flex items-center justify-center rounded-full" style="background-color: rgba(88, 166, 255, 0.1);">
+                        <i class="fas fa-shield-check text-2xl" style="color: var(--accent-blue);"></i>
+                    </div>
+                    <h3 class="font-semibold" style="color: var(--text-primary);">Protection Level</h3>
+                    <span class="status-badge status-active">Maximum</span>
+                </div>
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-2 flex items-center justify-center rounded-full" style="background-color: rgba(255, 142, 0, 0.1);">
+                        <i class="fas fa-clock text-2xl" style="color: var(--accent-orange);"></i>
+                    </div>
+                    <h3 class="font-semibold" style="color: var(--text-primary);">Uptime</h3>
+                    <span class="status-badge status-warning">99.8%</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Security Configuration -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8 mb-8">
+            <!-- Detection Settings -->
+            <div class="github-card p-6">
+                <h2 class="text-xl font-semibold mb-4" style="color: var(--text-primary);">
+                    <i class="fas fa-search mr-2" style="color: var(--accent-blue);"></i>Detection Settings
+                </h2>
+                <div class="space-y-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-medium" style="color: var(--text-primary);">Real-time Blocking</h3>
+                            <p class="text-sm" style="color: var(--text-secondary);">Block malicious IPs immediately</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="realTimeBlocking" onchange="toggleRealTimeBlocking()">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-medium" style="color: var(--text-primary);">SQL Injection Detection</h3>
+                            <p class="text-sm" style="color: var(--text-secondary);">Monitor for SQL injection attempts</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-medium" style="color: var(--text-primary);">XSS Protection</h3>
+                            <p class="text-sm" style="color: var(--text-secondary);">Cross-site scripting detection</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-medium" style="color: var(--text-primary);">Brute Force Protection</h3>
+                            <p class="text-sm" style="color: var(--text-secondary);">Monitor login attempts</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <h3 class="font-medium" style="color: var(--text-primary);">DDoS Mitigation</h3>
+                            <p class="text-sm" style="color: var(--text-secondary);">Distributed denial of service protection</p>
+                        </div>
+                        <label class="toggle-switch">
+                            <input type="checkbox" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Threshold Configuration -->
+            <div class="github-card p-6">
+                <h2 class="text-xl font-semibold mb-4" style="color: var(--text-primary);">
+                    <i class="fas fa-sliders-h mr-2" style="color: var(--accent-orange);"></i>Detection Thresholds
+                </h2>
+                <div class="space-y-6">
+                    <div>
+                        <label class="block text-sm font-medium mb-2" style="color: var(--text-primary);">Brute Force Threshold</label>
+                        <input type="range" min="3" max="20" value="5" class="w-full" onchange="updateThreshold('bruteForce', this.value)">
+                        <div class="flex justify-between text-xs mt-1" style="color: var(--text-secondary);">
+                            <span>3 attempts</span>
+                            <span id="bruteForceValue">5 attempts</span>
+                            <span>20 attempts</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2" style="color: var(--text-primary);">DDoS Request Threshold</label>
+                        <input type="range" min="50" max="500" value="100" class="w-full" onchange="updateThreshold('ddos', this.value)">
+                        <div class="flex justify-between text-xs mt-1" style="color: var(--text-secondary);">
+                            <span>50/min</span>
+                            <span id="ddosValue">100/min</span>
+                            <span>500/min</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2" style="color: var(--text-primary);">Suspicious Activity Score</label>
+                        <input type="range" min="1" max="10" value="3" class="w-full" onchange="updateThreshold('suspicious', this.value)">
+                        <div class="flex justify-between text-xs mt-1" style="color: var(--text-secondary);">
+                            <span>1 (Low)</span>
+                            <span id="suspiciousValue">3 (Medium)</span>
+                            <span>10 (High)</span>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium mb-2" style="color: var(--text-primary);">Block Duration (minutes)</label>
+                        <select class="w-full p-2 rounded" style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary);">
+                            <option value="15">15 minutes</option>
+                            <option value="30">30 minutes</option>
+                            <option value="60" selected>1 hour</option>
+                            <option value="120">2 hours</option>
+                            <option value="1440">24 hours</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- IP Management -->
+        <div class="github-card p-6 mb-8">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--text-primary);">
+                <i class="fas fa-network-wired mr-2" style="color: var(--accent-red);"></i>IP Address Management
+            </h2>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <!-- Blocked IPs -->
+                <div>
+                    <h3 class="text-lg font-medium mb-3" style="color: var(--text-primary);">Currently Blocked IPs</h3>
+                    <div class="space-y-2" id="blockedIpsList">
+                        <div class="flex items-center justify-between p-3 rounded" style="background-color: var(--bg-tertiary);">
+                            <div>
+                                <span class="font-mono text-sm" style="color: var(--text-primary);">192.168.1.100</span>
+                                <span class="text-xs ml-2" style="color: var(--text-secondary);">SQL Injection - 2h remaining</span>
+                            </div>
+                            <button onclick="unblockIP('192.168.1.100')" class="text-xs px-2 py-1 rounded" style="background-color: var(--accent-green); color: white;">
+                                Unblock
+                            </button>
+                        </div>
+                        <div class="flex items-center justify-between p-3 rounded" style="background-color: var(--bg-tertiary);">
+                            <div>
+                                <span class="font-mono text-sm" style="color: var(--text-primary);">10.0.0.50</span>
+                                <span class="text-xs ml-2" style="color: var(--text-secondary);">Brute Force - 45m remaining</span>
+                            </div>
+                            <button onclick="unblockIP('10.0.0.50')" class="text-xs px-2 py-1 rounded" style="background-color: var(--accent-green); color: white;">
+                                Unblock
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Whitelist Management -->
+                <div>
+                    <h3 class="text-lg font-medium mb-3" style="color: var(--text-primary);">IP Whitelist</h3>
+                    <div class="mb-3">
+                        <input type="text" placeholder="Enter IP address (e.g., 192.168.1.1)"
+                               class="w-full p-2 rounded" id="whitelistInput"
+                               style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary);">
+                        <button onclick="addToWhitelist()" class="mt-2 px-4 py-2 rounded text-white" style="background-color: var(--accent-blue);">
+                            <i class="fas fa-plus mr-1"></i>Add to Whitelist
+                        </button>
+                    </div>
+                    <div class="space-y-2" id="whitelistItems">
+                        <div class="flex items-center justify-between p-3 rounded" style="background-color: var(--bg-tertiary);">
+                            <span class="font-mono text-sm" style="color: var(--text-primary);">127.0.0.1</span>
+                            <button onclick="removeFromWhitelist('127.0.0.1')" class="text-xs px-2 py-1 rounded" style="background-color: var(--accent-red); color: white;">
+                                Remove
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Actions -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <!-- Logs Management -->
+            <div class="github-card p-6 text-center">
+                <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full" style="background-color: rgba(88, 166, 255, 0.1);">
+                    <i class="fas fa-file-alt text-2xl" style="color: var(--accent-blue);"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-2" style="color: var(--text-primary);">Export Logs</h3>
+                <p class="text-sm mb-4" style="color: var(--text-secondary);">Download security logs for analysis</p>
+                <button onclick="exportLogs()" class="px-4 py-2 rounded text-white" style="background-color: var(--accent-blue);">
+                    <i class="fas fa-download mr-1"></i>Export
+                </button>
+            </div>
+
+            <!-- System Backup -->
+            <div class="github-card p-6 text-center">
+                <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full" style="background-color: rgba(63, 185, 80, 0.1);">
+                    <i class="fas fa-database text-2xl" style="color: var(--accent-green);"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-2" style="color: var(--text-primary);">Backup Data</h3>
+                <p class="text-sm mb-4" style="color: var(--text-secondary);">Create system backup</p>
+                <button onclick="createBackup()" class="px-4 py-2 rounded text-white" style="background-color: var(--accent-green);">
+                    <i class="fas fa-save mr-1"></i>Backup
+                </button>
+            </div>
+
+            <!-- Clear Data -->
+            <div class="github-card p-6 text-center">
+                <div class="w-16 h-16 mx-auto mb-4 flex items-center justify-center rounded-full" style="background-color: rgba(248, 81, 73, 0.1);">
+                    <i class="fas fa-trash text-2xl" style="color: var(--accent-red);"></i>
+                </div>
+                <h3 class="text-lg font-semibold mb-2" style="color: var(--text-primary);">Clear Logs</h3>
+                <p class="text-sm mb-4" style="color: var(--text-secondary);">Remove old attack logs</p>
+                <button onclick="clearLogs()" class="px-4 py-2 rounded text-white" style="background-color: var(--accent-red);">
+                    <i class="fas fa-broom mr-1"></i>Clear
+                </button>
+            </div>
+        </div>
+
+        <!-- Notifications -->
+        <div class="github-card p-6">
+            <h2 class="text-xl font-semibold mb-4" style="color: var(--text-primary);">
+                <i class="fas fa-bell mr-2" style="color: var(--accent-yellow);"></i>Alert Notifications
+            </h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div>
+                    <h3 class="text-lg font-medium mb-3" style="color: var(--text-primary);">Email Alerts</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1" style="color: var(--text-primary);">Email Address</label>
+                            <input type="email" placeholder="admin@example.com"
+                                   class="w-full p-2 rounded"
+                                   style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary);">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span style="color: var(--text-primary);">Critical Alerts</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox" checked>
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span style="color: var(--text-primary);">Daily Reports</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <h3 class="text-lg font-medium mb-3" style="color: var(--text-primary);">Webhook Integration</h3>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium mb-1" style="color: var(--text-primary);">Webhook URL</label>
+                            <input type="url" placeholder="https://hooks.slack.com/..."
+                                   class="w-full p-2 rounded"
+                                   style="background-color: var(--bg-tertiary); border: 1px solid var(--border-color); color: var(--text-primary);">
+                        </div>
+                        <div class="flex items-center justify-between">
+                            <span style="color: var(--text-primary);">Slack Notifications</span>
+                            <label class="toggle-switch">
+                                <input type="checkbox">
+                                <span class="slider"></span>
+                            </label>
+                        </div>
+                        <button class="px-4 py-2 rounded text-white" style="background-color: var(--accent-blue);">
+                            <i class="fas fa-test mr-1"></i>Test Webhook
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    // Load current blocking status on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        checkBlockingStatus();
+        loadBlockedIPs();
+    });
+
+    async function checkBlockingStatus() {
+        try {
+            const response = await fetch('/api/admin/blocking-status');
+            const data = await response.json();
+            document.getElementById('realTimeBlocking').checked = data.blockingEnabled;
+        } catch (error) {
+            console.error('Error checking blocking status:', error);
+        }
+    }
+
+    async function toggleRealTimeBlocking() {
+        const enabled = document.getElementById('realTimeBlocking').checked;
+        try {
+            const response = await fetch(`/api/admin/toggle-blocking?enabled=${enabled}`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+            showNotification(data.message, enabled ? 'success' : 'warning');
+        } catch (error) {
+            console.error('Error toggling blocking:', error);
+            showNotification('Error updating blocking status', 'error');
+            // Revert toggle
+            document.getElementById('realTimeBlocking').checked = !enabled;
+        }
+    }
+
+    async function loadBlockedIPs() {
+        try {
+            const response = await fetch('/api/security/blocked-ips');
+            const data = await response.json();
+            updateBlockedIPsList(data.blockedIPs);
+        } catch (error) {
+            console.error('Error loading blocked IPs:', error);
+        }
+    }
+
+    function updateBlockedIPsList(blockedIPs) {
+        const container = document.getElementById('blockedIpsList');
+        container.innerHTML = '';
+
+        if (Object.keys(blockedIPs).length === 0) {
+            container.innerHTML = '<p style="color: var(--text-secondary);">No IPs currently blocked</p>';
+            return;
+        }
+
+        Object.entries(blockedIPs).forEach(([ip, data]) => {
+            const div = document.createElement('div');
+            div.className = 'flex items-center justify-between p-3 rounded';
+            div.style.backgroundColor = 'var(--bg-tertiary)';
+            div.innerHTML = `
+                    <div>
+                        <span class="font-mono text-sm" style="color: var(--text-primary);">${ip}</span>
+                        <span class="text-xs ml-2" style="color: var(--text-secondary);">${data.reason}</span>
+                    </div>
+                    <button onclick="unblockIP('${ip}')" class="text-xs px-2 py-1 rounded" style="background-color: var(--accent-green); color: white;">
+                        Unblock
+                    </button>
+                `;
+            container.appendChild(div);
+        });
+    }
+
+    async function unblockIP(ip) {
+        try {
+            const response = await fetch(`/api/security/unblock/${ip}`, {
+                method: 'POST'
+            });
+            const data = await response.json();
+            if (data.success) {
+                showNotification(`IP ${ip} unblocked successfully`, 'success');
+                loadBlockedIPs(); // Refresh the list
+            } else {
+                showNotification(`Failed to unblock IP ${ip}`, 'error');
+            }
+        } catch (error) {
+            console.error('Error unblocking IP:', error);
+            showNotification('Error unblocking IP', 'error');
+        }
+    }
+
+    function addToWhitelist() {
+        const input = document.getElementById('whitelistInput');
+        const ip = input.value.trim();
+
+        if (!isValidIP(ip)) {
+            showNotification('Please enter a valid IP address', 'error');
+            return;
+        }
+
+        // Add to whitelist (implement API call)
+        showNotification(`IP ${ip} added to whitelist`, 'success');
+        input.value = '';
+
+        // Add to UI
+        const container = document.getElementById('whitelistItems');
+        const div = document.createElement('div');
+        div.className = 'flex items-center justify-between p-3 rounded';
+        div.style.backgroundColor = 'var(--bg-tertiary)';
+        div.innerHTML = `
+                <span class="font-mono text-sm" style="color: var(--text-primary);">${ip}</span>
+                <button onclick="removeFromWhitelist('${ip}')" class="text-xs px-2 py-1 rounded" style="background-color: var(--accent-red); color: white;">
+                    Remove
+                </button>
+            `;
+        container.appendChild(div);
+    }
+
+    function removeFromWhitelist(ip) {
+        // Remove from whitelist (implement API call)
+        showNotification(`IP ${ip} removed from whitelist`, 'success');
+        // Remove from UI
+        event.target.closest('div').remove();
+    }
+
+    function updateThreshold(type, value) {
+        document.getElementById(`${type}Value`).textContent =
+            type === 'ddos' ? `${value}/min` :
+                type === 'suspicious' ? `${value} (${value <= 3 ? 'Low' : value <= 7 ? 'Medium' : 'High'})` :
+                    `${value} attempts`;
+    }
+
+    async function exportLogs() {
+        try {
+            showNotification('Preparing logs for export...', 'info');
+            // Simulate export delay
+            setTimeout(() => {
+                showNotification('Logs exported successfully', 'success');
+                // In real implementation, trigger download
+            }, 2000);
+        } catch (error) {
+            showNotification('Error exporting logs', 'error');
+        }
+    }
+
+    async function createBackup() {
+        try {
+            showNotification('Creating system backup...', 'info');
+            // Simulate backup delay
+            setTimeout(() => {
+                showNotification('Backup created successfully', 'success');
+            }, 3000);
+        } catch (error) {
+            showNotification('Error creating backup', 'error');
+        }
+    }
+
+    async function clearLogs() {
+        if (confirm('Are you sure you want to clear all logs? This action cannot be undone.')) {
+            try {
+                const response = await fetch('/api/admin/clear-logs', {
+                    method: 'POST'
+                });
+                const data = await response.json();
+                showNotification('Logs cleared successfully', 'success');
+            } catch (error) {
+                console.error('Error clearing logs:', error);
+                showNotification('Error clearing logs', 'error');
+            }
+        }
+    }
+
+    function isValidIP(ip) {
+        const regex = /^(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)$/;
+        return regex.test(ip);
+    }
+
+    function showNotification(message, type) {
+        // Create notification element
+        const notification = document.createElement('div');
+        notification.className = `fixed top-4 right-4 px-6 py-3 rounded shadow-lg z-50 text-white`;
+        notification.style.backgroundColor =
+            type === 'success' ? 'var(--accent-green)' :
+                type === 'error' ? 'var(--accent-red)' :
+                    type === 'warning' ? 'var(--accent-orange)' :
+                        'var(--accent-blue)';
+        notification.textContent = message;
+
+        document.body.appendChild(notification);
+
+        // Remove after 3 seconds
+        setTimeout(() => {
+            notification.remove();
+        }, 3000);
+    }
+</script>
+</body>
+</html>

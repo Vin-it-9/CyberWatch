@@ -6,9 +6,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class webcontroller {
 
-    @GetMapping("/home")
+    @GetMapping("/")
     public String index() {
-        return "index";
+        return "redirect:/dashboard";
     }
 
 }
